@@ -82,11 +82,6 @@ void draw()
   ellipse(mouseX, mouseY, 20, 20); //draw user cursor as a circle with a diameter of 20
 }
 
-boolean isMouseOver(Rectangle b) {
-  return mouseX >= b.x && mouseX <= b.x + b.width &&
-         mouseY >= b.y && mouseY <= b.y + b.height;
-}
-
 void mousePressed() // test to see if hit was in target!
 {
   if (trialNum >= trials.size()) //if task is over, just return
@@ -131,51 +126,17 @@ Rectangle getButtonLocation(int i) //for a given button ID, what is its location
 }
 
 //you can edit this method to change how buttons appear
-//void drawButton(int i)
-//{
-//  Rectangle bounds = getButtonLocation(i);
-
-//  if (trials.get(trialNum) == i) // see if current button is the target
-//    fill(0, 255, 255); // if so, fill cyan
-//  else
-//    fill(200); // if not, fill gray
-
-//  rect(bounds.x, bounds.y, bounds.width, bounds.height); //draw button
-//}
-
 void drawButton(int i)
 {
   Rectangle bounds = getButtonLocation(i);
 
-  int curId  = trials.get(trialNum);
-  int nextId = (trialNum + 1 < trials.size()) ? trials.get(trialNum + 1) : -1;
+  if (trials.get(trialNum) == i) // see if current button is the target
+    fill(0, 255, 255); // if so, fill cyan
+  else
+    fill(200); // if not, fill gray
 
-  boolean isCurrent = (i == curId);
-  boolean isNext = (i == nextId);
-  boolean hovered = isMouseOver(bounds);
-
-  if (isCurrent) {
-    fill(255, 0, 0); 
-  } 
-  else if (isNext) {
-    fill(255, 255, 200);
-  } 
-  else {
-    fill(200);
-  }
-
-  rect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-  if (hovered) {
-    noFill();
-    stroke(255, 255, 0);
-    strokeWeight(3);
-    rect(bounds.x - 2, bounds.y - 2, bounds.width + 4, bounds.height + 4);
-    noStroke();
-  }
+  rect(bounds.x, bounds.y, bounds.width, bounds.height); //draw button
 }
-
-
 
 void mouseMoved()
 {
