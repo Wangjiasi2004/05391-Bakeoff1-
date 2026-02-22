@@ -1,0 +1,372 @@
+import java.awt.AWTException;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.util.ArrayList;
+import java.util.Collections;
+import processing.core.PApplet;
+
+//when in doubt, consult the Processsing reference: https://processing.org/reference/
+
+int margin = 200; //set the margin around the squares
+final int padding = 50; // padding between buttons and also their width/height
+final int buttonSize = 40; // padding between buttons and also their width/height
+ArrayList<Integer> trials = new ArrayList<Integer>(); //contains the order of buttons that activate in the test
+int trialNum = 0; //the current trial number (indexes into trials array above)
+int startTime = 0; // time starts when the first click is captured
+int finishTime = 0; //records the time of the final click
+int hits = 0; //number of successful clicks
+int misses = 0; //number of missed clicks
+Robot robot; //initialized in setup 
+int nextDisplayDelay = 150;
+int lastTrialTime = 0;
+boolean spaceLatch = false;
+
+int numRepeats = 1; //sets the number of times each button repeats in the test
+
+void setup()
+{
+  size(700, 700); // set the size of the window
+  //noCursor(); //hides the system cursor if you want
+  noStroke(); //turn off all strokes, we're just using fills here (can change this if you want)
+  textFont(createFont("Arial", 16)); //sets the font to Arial size 16
+  textAlign(CENTER);
+  frameRate(60);
+  ellipseMode(CENTER); //ellipses are drawn from the center (BUT RECTANGLES ARE NOT!)
+  //rectMode(CENTER); //enabling will break the scaffold code, but you might find it easier to work with centered rects
+
+  try {
+    robot = new Robot(); //create a "Java Robot" class that can move the system cursor
+  } 
+  catch (AWTException e) {
+    e.printStackTrace();
+  }
+
+  //===DON'T MODIFY MY RANDOM ORDERING CODE==
+  for (int i = 0; i < 16; i++) //generate list of targets and randomize the order
+      // number of buttons in 4x4 grid
+    for (int k = 0; k < numRepeats; k++)
+      // number of times each button repeats
+      trials.add(i);
+
+  Collections.shuffle(trials); // randomize the order of the buttons
+  System.out.println("trial order: " + trials);
+  
+  surface.setLocation(0,0);// put window in top left corner of screen (doesn't always work)
+}
+
+
+void draw()
+{
+  background(0); //set background to black
+
+  if (trialNum >= trials.size()) //check to see if test is over
+  {
+    float timeTaken = (finishTime-startTime) / 1000f;
+    float penalty = constrain(((95f-((float)hits*100f/(float)(hits+misses)))*.2f),0,100);
+    fill(255); //set fill color to white
+    //write to screen (not console)
+    text("Finished!", width / 2, height / 2); 
+    text("Hits: " + hits, width / 2, height / 2 + 20);
+    text("Misses: " + misses, width / 2, height / 2 + 40);
+    text("Accuracy: " + (float)hits*100f/(float)(hits+misses) +"%", width / 2, height / 2 + 60);
+    text("Total time taken: " + timeTaken + " sec", width / 2, height / 2 + 80);
+    text("Average time for each button: " + nf((timeTaken)/(float)(hits+misses),0,3) + " sec", width / 2, height / 2 + 100);
+    text("Average time for each button + penalty: " + nf(((timeTaken)/(float)(hits+misses) + penalty),0,3) + " sec", width / 2, height / 2 + 140);
+    return; //return, nothing else to do now test is over
+  }
+
+  fill(255); //set fill color to white
+  text((trialNum + 1) + " of " + trials.size(), 40, 20); //display what trial the user is on
+
+  for (int i = 0; i < 16; i++)// for all button
+    drawButton(i); //draw button
+
+  //fill(255, 0, 0, 200); // set fill color to translucent red
+  //ellipse(mouseX, mouseY, 20, 20); //draw user cursor as a circle with a diameter of 20
+
+  // Arrow v1 - 2026-02-13
+  create_arrow();
+  noStroke();
+}
+
+boolean isMouseOver(Rectangle b) {
+  return mouseX >= b.x && mouseX <= b.x + b.width &&
+         mouseY >= b.y && mouseY <= b.y + b.height;
+}
+
+void mousePressed() // test to see if hit was in target!
+{
+  if (trialNum >= trials.size()) //if task is over, just return
+    return;
+
+  if (trialNum == 0) //check if first click, if so, start timer
+    startTime = millis();
+
+  if (trialNum == trials.size() - 1) //check if final click
+  {
+    finishTime = millis();
+    //write to terminal some output. Useful for debugging too.
+    println("we're done!");
+  }
+
+  Rectangle bounds = getButtonLocation(trials.get(trialNum));
+
+ //check to see if mouse cursor is inside button 
+  if ((mouseX > bounds.x && mouseX < bounds.x + bounds.width) && (mouseY > bounds.y && mouseY < bounds.y + bounds.height)) // test to see if hit was within bounds
+  {
+    System.out.println("HIT! " + trialNum + " " + (millis() - startTime)); // success
+    hits++; 
+  } 
+  else
+  {
+    System.out.println("MISSED! " + trialNum + " " + (millis() - startTime)); // fail
+    misses++;
+  }
+
+  trialNum++; //Increment trial number
+
+  //in this example code, we move the mouse back to the middle
+  //robot.mouseMove(width/2, (height)/2); //on click, move cursor to roughly center of window!
+  if (trialNum == 0) startTime = millis();
+  lastTrialTime = millis();
+}  
+
+//probably shouldn't have to edit this method
+Rectangle getButtonLocation(int i) //for a given button ID, what is its location and size
+{
+   int x = (i % 4) * (padding + buttonSize) + margin;
+   int y = (i / 4) * (padding + buttonSize) + margin;
+   return new Rectangle(x, y, buttonSize, buttonSize);
+}
+
+//you can edit this method to change how buttons appear
+
+void drawButton(int i)
+{
+  Rectangle bounds = getButtonLocation(i);
+
+  int curId  = trials.get(trialNum);
+  int nextId = (trialNum + 1 < trials.size()) ? trials.get(trialNum + 1) : -1;
+
+  boolean isCurrent = (i == curId);
+  boolean isNext = false;
+  if (trialNum + 1 < trials.size()) {
+    if (millis() - lastTrialTime >= nextDisplayDelay) {
+      isNext = (i == trials.get(trialNum + 1));
+    }
+  }
+  boolean hovered = isMouseOver(bounds);
+
+  if (isCurrent) {
+    fill(255, 90, 90);
+  } 
+  else if (isNext) {
+    fill(255, 200, 90);
+  } 
+  else {
+    fill(200);
+  }
+
+  rect(bounds.x, bounds.y, bounds.width, bounds.height);
+
+  if (hovered) {
+  noFill();
+  stroke(80, 200, 255);
+  strokeWeight(3);
+  rect(bounds.x, bounds.y, bounds.width, bounds.height);
+  noStroke();
+  }
+}
+
+void mouseMoved()
+{
+   //can do stuff everytime the mouse is moved (i.e., not clicked)
+   //https://processing.org/reference/mouseMoved_.html
+}
+
+void mouseDragged()
+{
+  //can do stuff everytime the mouse is dragged
+  //https://processing.org/reference/mouseDragged_.html
+}
+
+void keyPressed(){
+  if (key == ' ')
+  {
+    if (spaceLatch) return;
+    spaceLatch = true;
+
+    if (trialNum >= trials.size())
+      return;
+
+    if (trialNum == 0) 
+      startTime = millis();
+
+    if (trialNum == trials.size() - 1) 
+      finishTime = millis();
+
+    Rectangle bounds = getButtonLocation(trials.get(trialNum));
+
+    if (isMouseOver(bounds))
+    {
+      println("HIT! " + trialNum + " " + (millis() - startTime));
+      hits++;
+    } 
+    else
+    {
+      println("MISSED! " + trialNum + " " + (millis() - startTime));
+      misses++;
+    }
+
+    trialNum++;
+    lastTrialTime = millis();
+  }
+}
+
+void keyReleased(){
+  if (key == ' ') {
+    spaceLatch = false;
+  }
+}
+
+
+
+
+
+// Arrow, version 1
+// jnfrantz
+// 2026-02-13
+// Sources:
+// - https://processing.org/reference/line_.html
+
+// Creates an arrow from the mouse's location to the target square.
+void create_arrow() {
+  if (isMouseOver(getButtonLocation(trials.get(trialNum)))) return;
+  int x1 = mouseX;
+  int y1 = mouseY;
+
+  Rectangle b = getButtonLocation(trials.get(trialNum));
+
+  float cx = b.x + b.width / 2.0;
+  float cy = b.y + b.height / 2.0;
+
+  float dx = cx - x1;
+  float dy = cy - y1;
+
+  if (dx == 0 && dy == 0) return;
+
+  float tMin = Float.MAX_VALUE;
+
+  // ===== 与左边界 =====
+  if (dx != 0) {
+    float t = (b.x - x1) / dx;
+    float y = y1 + t * dy;
+    if (t > 0 && y >= b.y && y <= b.y + b.height)
+      tMin = min(tMin, t);
+  }
+
+  // ===== 与右边界 =====
+  if (dx != 0) {
+    float t = (b.x + b.width - x1) / dx;
+    float y = y1 + t * dy;
+    if (t > 0 && y >= b.y && y <= b.y + b.height)
+      tMin = min(tMin, t);
+  }
+
+  // ===== 与上边界 =====
+  if (dy != 0) {
+    float t = (b.y - y1) / dy;
+    float x = x1 + t * dx;
+    if (t > 0 && x >= b.x && x <= b.x + b.width)
+      tMin = min(tMin, t);
+  }
+
+  // ===== 与下边界 =====
+  if (dy != 0) {
+    float t = (b.y + b.height - y1) / dy;
+    float x = x1 + t * dx;
+    if (t > 0 && x >= b.x && x <= b.x + b.width)
+      tMin = min(tMin, t);
+  }
+
+  if (tMin == Float.MAX_VALUE) return;
+
+  int x2 = (int)(x1 + dx * tMin);
+  int y2 = (int)(y1 + dy * tMin);
+
+  stroke(80, 200, 255);
+  strokeWeight(4);
+
+  arrow(x1, y1, x2, y2);
+}
+
+
+
+// draw an arrow! from (x1, y1) to (x2, y2)
+// apl is parallel proportion of arrow part
+// app is perpendicular proportion of arrow part
+void arrow(int x1, int y1, int x2, int y2) {
+  // parallel and perpendicular parts of arrow
+  int apl = 10;
+  int app = 6;
+  
+  // differences
+  int dx = x2 - x1;
+  int dy = y2 - y1;
+  
+  // arrow part
+  float ldx = 0.0;
+  float ldy = 0.0;
+  float rdx = 0.0;
+  float rdy = 0.0;
+  
+  float slx = 0.0;
+  float sly = 0.0;
+  
+  if (dx == 0) { // vertical slope
+    slx = 0.0;
+    sly = 1.0 * Math.signum(y2 - y1);
+  } else if (dy == 0) { // horizontal slope
+    slx = 1.0 * Math.signum(x2 - x1);
+    sly = 0.0;
+  } else {
+    float slope = ((float) dy) / dx;
+    float magnitude = (float) Math.sqrt(Math.pow(slope, 2) + 1.0);
+    
+    // unit vector
+    slx = 1.0 * Math.signum(x2 - x1) / magnitude;
+    sly = slope * Math.signum(x2 - x1) / magnitude;
+  }
+  
+  // -- Print debugging --
+  // println("<" + Float.toString(slx) + ", " + Float.toString(sly) + ">");
+  
+  // parallel part
+  ldx -= apl * slx;
+  ldy -= apl * sly;
+  
+  rdx -= apl * slx;
+  rdy -= apl * sly;
+  
+  // perpendicular part
+  ldx += app * sly;
+  ldy -= app * slx;
+  
+  rdx -= app * sly;
+  rdy += app * slx;
+  
+  // drawing!
+  line(x1, y1, x2, y2);
+  line(x2, y2, (int)(x2+ldx), (int)(y2+ldy));
+  line(x2, y2, (int)(x2+rdx), (int)(y2+rdy));
+}
+
+// Repurposing code from getButtonLocation
+int getButtonX(int i) { // for a given button ID, what is its center's x-coordinate
+  int x = (i % 4) * (padding + buttonSize) + buttonSize / 2 + margin;
+  return x;
+}
+int getButtonY(int i) { // for a given button ID, what is its center's y-coordinate
+  int y = (i / 4) * (padding + buttonSize) + buttonSize / 2 + margin;
+  return y;
+}
